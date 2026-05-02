@@ -14,7 +14,7 @@
 
 ### 环境要求
 
-- Python 3.8+
+- Python 3.11+
 - Windows 系统（使用 soundcard 的 mediafoundation）
 
 ### 安装依赖
