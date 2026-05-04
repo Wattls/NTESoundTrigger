@@ -1,88 +1,124 @@
 import numpy as np
+from concurrent.futures import ThreadPoolExecutor
+from Config import load_sample
+from Logger import logger
 
-import librosa
-import soundcard as sc
+try:
+    import mss
+    import mss.tools
+    HAS_MSS = True
+except ImportError:
+    HAS_MSS = False
 
-from scipy.signal import correlate, butter, filtfilt
-from sklearn.preprocessing import scale
+import os
+from datetime import datetime
+
+CAP_DIR = "./captures"
+os.makedirs(CAP_DIR, exist_ok=True)
 
 
-class GameAudioListener:
-    used_sr = 32000  # 采样率
-    used_channel = 2
-    chunk_size = 1600  # 语音块大小
-    device_index = 0  # 设备编号
-    sample_len = 0.2  # 每次采样长度0.2s
+def snap(prefix, score):
+    if not HAS_MSS:
+        return
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    fp = os.path.join(CAP_DIR, f"{prefix}_{ts}_s{score:.3f}.png")
+    with mss.mss() as sct:
+        img = sct.grab(sct.monitors[1])
+        mss.tools.to_png(img.rgb, (img.width, img.height), output=fp)
+    logger.info("snap %s", fp)
 
-    degree = 4  # 四阶bathworth多项式, 越大阻带区域滤波程度越大
-    cut_off = 1000  # Hz,截止频率,对该频率一下的声音进行滤波,若需要识别人声可适当降低
 
-    def __init__(self, sample_path: str, ratio=1.0, audio_instance=None):
-        self.sample_waveform, sample_rate = librosa.load(sample_path)
-        self.sample_waveform = librosa.resample(self.sample_waveform, orig_sr=sample_rate, target_sr=self.used_sr)
-
-        self.b, self.a = butter(self.degree, self.cut_off, btype='highpass', output='ba', fs=self.used_sr)  # Butterworth高通滤波
-        self.sample_waveform = self._filtering(self.sample_waveform)
-
-        # 使用传入的音频实例或创建新实例
-        if audio_instance is not None:
-            self.audio_instance = audio_instance
-        else:
-            loopback_speaker = sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True)
-            self.audio_instance = loopback_speaker.recorder(samplerate=self.used_sr, channels=self.used_channel)
-
+class Watcher:
+    def __init__(self, name, wav, action, thresh, fb,
+                 sr=32000, ratio=1.0, mon=None, tag='',
+                 screenshot=False, allow_repeat=False,
+                 win_sec=None):
+        self.name = name
+        self.action = action
+        self.thresh = thresh
         self.ratio = ratio
+        self.sr = sr
+        self.mon = mon
+        self.tag = tag
+        self.screenshot = screenshot
+        self.allow_repeat = allow_repeat
 
-        print("初始化完毕...")
+        self.sample = load_sample(wav, fb, sr)
+        self.ref = self._norm(self.sample)
 
-    def _filtering(self, _waveform: np.ndarray):
-        # 零相位滤波
-        _waveform = filtfilt(self.b, self.a, _waveform)
-        return _waveform
+        sample_sec = len(self.sample) / sr
+        self.win_sec = win_sec or max(sample_sec, 0.5)
+        max_n = int(self.win_sec * sr)
 
-    def matching(self, stream_waveform: np.ndarray):
-        stream_waveform = self._filtering(stream_waveform)
+        fft_n = 1 << ((max_n + len(self.ref) - 1).bit_length())
+        self._ref_fft = np.fft.rfft(self.ref, n=fft_n).conj()
+        self._fft_n = fft_n
 
-        # 标准化
-        norm_stream_waveform = scale(stream_waveform, with_mean=False)
-        norm_sample_waveform = scale(self.sample_waveform, with_mean=False)
+        self._buf = np.zeros(max_n, dtype=np.float64)
+        self._pos = 0
+        self._filled = 0
+        self.ready = True
+        self._pool = ThreadPoolExecutor(max_workers=1)
 
-        # 计算NCC
-        if norm_stream_waveform.shape[0] > norm_sample_waveform.shape[0]:
-            correlation = correlate(norm_stream_waveform, norm_sample_waveform, mode='same', method='fft') / \
-                          norm_stream_waveform.shape[0]
+    def _norm(self, wf):
+        rms = np.sqrt(np.mean(wf ** 2) + 1e-6)
+        return wf / rms
+
+    def feed(self, frame):
+        n = frame.shape[0]
+        buf = self._buf
+        size = buf.shape[0]
+
+        if n >= size:
+            buf[:] = frame[-size:]
+            self._pos = 0
+            self._filled = size
         else:
-            correlation = correlate(norm_sample_waveform, norm_stream_waveform, mode='same', method='fft') / \
-                          norm_sample_waveform.shape[0]
+            end = self._pos + n
+            if end <= size:
+                buf[self._pos:end] = frame
+            else:
+                p1 = size - self._pos
+                buf[self._pos:] = frame[:p1]
+                buf[:end - size] = frame[p1:]
+            self._pos = (self._pos + n) % size
+            self._filled = min(self._filled + n, size)
 
-        max_corr = np.max(correlation) * self.ratio
+        if self._filled < size:
+            seg = buf[:self._filled]
+        elif self._pos == 0:
+            seg = buf
+        else:
+            seg = np.concatenate((buf[self._pos:], buf[:self._pos]))
 
-        return max_corr
+        score = self._match(self._norm(seg)) * self.ratio
 
-    def online_listening(self):
-        last_frames = np.empty(shape=(0,), dtype=np.float64)
+        if self.mon:
+            self.mon.put_score(score, self.tag)
 
-        with self.audio_instance as audio_recorder:
-            while True:
-                current_frame = np.empty(shape=(0,), dtype=np.float64)
-                for index in range(int(self.used_sr / self.chunk_size * self.sample_len)):
-                    stream_data = audio_recorder.record(numframes=self.chunk_size)
-                    read_chunks = librosa.to_mono(stream_data.T)
+        if score >= self.thresh and (self.ready or self.allow_repeat):
+            if self.screenshot:
+                self._pool.submit(snap, self.tag, score)
+            self._pool.submit(self._fire, score)
+            self.ready = False
+        else:
+            self.ready = True
 
-                    current_frame = np.append(current_frame, read_chunks)
+    def _fire(self, score):
+        try:
+            acts = self.action()
+            txt = f"{self.name} {score:.5f}\n{' -> '.join(acts)}"
+            if self.mon:
+                self.mon.put_msg(txt)
+            logger.info(txt)
+        except Exception as e:
+            logger.error("%s fail: %s", self.name, e, exc_info=True)
 
-                # 积累完成,计算匹配分数
-                # start_time = time()
-                combined_frames = np.append(last_frames, current_frame)
-                max_score = self.matching(combined_frames)
-                # print("CONSUMED TIME: {}s".format(round(time() - start_time, 8)))
-
-                last_frames = current_frame
-
-                print(max_score, np.max(current_frame))
-
-
-
-
-
-
+    def _match(self, seg):
+        n = len(seg) + len(self.ref) - 1
+        if n > self._fft_n:
+            self._fft_n = 1 << n.bit_length()
+            self._ref_fft = np.fft.rfft(self.ref, n=self._fft_n).conj()
+        f = np.fft.rfft(seg, n=self._fft_n)
+        corr = np.fft.irfft(f * self._ref_fft)[:n]
+        return np.max(corr) / max(len(seg), len(self.ref))
