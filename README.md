@@ -99,6 +99,14 @@ NTESoundTrigger/
 └── requirements.txt
 ```
 
+## 许可证
+
+本项目基于 [GPLv3](LICENSE) 许可证开源。
+
+## 致谢
+
+本项目基于 [ImLaoBJie/ZZZSoundTrigger](https://github.com/ImLaoBJie/ZZZSoundTrigger) 改编而来，感谢原作者的开源分享。
+
 ## 注意
 
 - 仅支持 Windows（键盘鼠标模拟使用 `user32.SendInput`）
