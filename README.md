@@ -98,7 +98,11 @@ NTESoundTrigger/
 ├── Logger.py     # 日志配置
 └── requirements.txt
 ```
+## 注意
 
+- 仅支持 Windows（键盘鼠标模拟使用 `user32.SendInput`）
+- 需要启用系统立体声混音或使用 SoundCard 支持的回路设备
+- 管理员权限非必需，但部分游戏可能需要以管理员身份运行才能正常发送键鼠输入
 ## 许可证
 
 本项目基于 [GPLv3](LICENSE) 许可证开源。
@@ -107,8 +111,7 @@ NTESoundTrigger/
 
 本项目基于 [ImLaoBJie/ZZZSoundTrigger](https://github.com/ImLaoBJie/ZZZSoundTrigger) 改编而来，感谢原作者的开源分享。
 
-## 注意
+## 免责声明
 
-- 仅支持 Windows（键盘鼠标模拟使用 `user32.SendInput`）
-- 需要启用系统立体声混音或使用 SoundCard 支持的回路设备
-- 管理员权限非必需，但部分游戏可能需要以管理员身份运行才能正常发送键鼠输入
+- 使用本项目产生的所有问题与本项目及开发者无关。
+- 若您遇到商家使用本软件进行代练、演示、贩卖或收费，产生的任何问题及后果与本项目无关。
