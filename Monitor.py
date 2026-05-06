@@ -1,6 +1,7 @@
 import multiprocessing
 import threading
 import numpy as np
+from types import SimpleNamespace
 from Logger import logger
 
 try:
@@ -108,37 +109,32 @@ def _plot(sq, mq, n, d_th, c_th):
     root.mainloop()
 
 
-class _Mon:
-    __slots__ = ('sq', 'mq', 'proc')
-
-    def put_score(self, score, tag='dodge'):
-        if self.sq:
-            self.sq.put({'tag': tag, 'score': score})
-
-    def put_msg(self, txt):
-        if self.mq:
-            self.mq.put(txt)
-
-    def close(self):
-        if self.sq:
-            self.sq.put(None)
-            self.mq.put(None)
-            self.proc.join(timeout=2)
-            if self.proc.is_alive():
-                logger.warning("monitor stuck, killing")
-                self.proc.terminate()
-                self.proc.join()
-
-
 def start_monitor(n, d_th, c_th=None):
-    m = _Mon()
     if not HAS_MPL:
-        m.sq = m.mq = None
-        m.proc = None
-        return m
+        return SimpleNamespace(sq=None, mq=None, proc=None,
+                               put_score=lambda *a: None,
+                               put_msg=lambda *a: None,
+                               close=lambda: None)
 
-    m.sq = multiprocessing.Queue()
-    m.mq = multiprocessing.Queue()
-    m.proc = multiprocessing.Process(target=_plot, args=(m.sq, m.mq, n, d_th, c_th))
-    m.proc.start()
-    return m
+    sq = multiprocessing.Queue()
+    mq = multiprocessing.Queue()
+    proc = multiprocessing.Process(target=_plot, args=(sq, mq, n, d_th, c_th))
+    proc.start()
+
+    def put_score(score, tag='dodge'):
+        sq.put({'tag': tag, 'score': score})
+
+    def put_msg(txt):
+        mq.put(txt)
+
+    def close():
+        sq.put(None)
+        mq.put(None)
+        proc.join(timeout=2)
+        if proc.is_alive():
+            logger.warning("monitor stuck, killing")
+            proc.terminate()
+            proc.join()
+
+    return SimpleNamespace(sq=sq, mq=mq, proc=proc,
+                           put_score=put_score, put_msg=put_msg, close=close)

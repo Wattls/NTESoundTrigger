@@ -3,36 +3,11 @@ from concurrent.futures import ThreadPoolExecutor
 from Config import load_sample
 from Logger import logger
 
-try:
-    import mss
-    import mss.tools
-    HAS_MSS = True
-except ImportError:
-    HAS_MSS = False
-
-import os
-from datetime import datetime
-
-CAP_DIR = "./captures"
-os.makedirs(CAP_DIR, exist_ok=True)
-
-
-def snap(prefix, score):
-    if not HAS_MSS:
-        return
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-    fp = os.path.join(CAP_DIR, f"{prefix}_{ts}_s{score:.3f}.png")
-    with mss.mss() as sct:
-        img = sct.grab(sct.monitors[1])
-        mss.tools.to_png(img.rgb, (img.width, img.height), output=fp)
-    logger.info("snap %s", fp)
-
 
 class Watcher:
     def __init__(self, name, wav, action, thresh, fb,
                  sr=32000, ratio=1.0, mon=None, tag='',
-                 screenshot=False, allow_repeat=False,
-                 win_sec=None):
+                 allow_repeat=False, win_sec=None):
         self.name = name
         self.action = action
         self.thresh = thresh
@@ -40,7 +15,6 @@ class Watcher:
         self.sr = sr
         self.mon = mon
         self.tag = tag
-        self.screenshot = screenshot
         self.allow_repeat = allow_repeat
 
         self.sample = load_sample(wav, fb, sr)
@@ -97,8 +71,6 @@ class Watcher:
             self.mon.put_score(score, self.tag)
 
         if score >= self.thresh and (self.ready or self.allow_repeat):
-            if self.screenshot:
-                self._pool.submit(snap, self.tag, score)
             self._pool.submit(self._fire, score)
             self.ready = False
         else:

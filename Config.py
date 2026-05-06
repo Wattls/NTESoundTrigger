@@ -33,8 +33,6 @@ class Config:
     DODGE_WIN = None
     COUNTER_WIN = None
 
-    SCREENSHOT = False
-
 
 class FilterBank:
     def __init__(self, order, cutoff, sr):

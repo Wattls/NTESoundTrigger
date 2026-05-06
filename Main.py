@@ -1,4 +1,3 @@
-import multiprocessing
 from Config import Config, AudioEngine, FilterBank
 from Listener import Watcher
 from Monitor import start_monitor
@@ -6,8 +5,6 @@ from Trigger import KB
 from Logger import logger
 
 if __name__ == "__main__":
-    multiprocessing.freeze_support()
-
     cfg = Config()
     fb = FilterBank(cfg.HP_ORDER, cfg.HP_CUT, cfg.SR)
     n = int(cfg.MONITOR_SEC / cfg.FRAME)
@@ -18,15 +15,13 @@ if __name__ == "__main__":
         name="闪避", wav=cfg.DODGE_WAV, action=kbm.dodge,
         thresh=cfg.DODGE_THRESH, fb=fb, sr=cfg.SR,
         ratio=cfg.RATIO, mon=mon, tag="dodge",
-        screenshot=cfg.SCREENSHOT, allow_repeat=cfg.ALLOW_REPEAT,
-        win_sec=cfg.DODGE_WIN,
+        allow_repeat=cfg.ALLOW_REPEAT, win_sec=cfg.DODGE_WIN,
     )
     counter = Watcher(
         name="反击", wav=cfg.COUNTER_WAV, action=kbm.hit,
         thresh=cfg.COUNTER_THRESH, fb=fb, sr=cfg.SR,
         ratio=cfg.RATIO, mon=mon, tag="counter",
-        screenshot=cfg.SCREENSHOT, allow_repeat=cfg.ALLOW_REPEAT,
-        win_sec=cfg.COUNTER_WIN,
+        allow_repeat=cfg.ALLOW_REPEAT, win_sec=cfg.COUNTER_WIN,
     )
 
     audio = AudioEngine(cfg.SR, cfg.CHANNELS, cfg.CHUNK, cfg.FRAME)
