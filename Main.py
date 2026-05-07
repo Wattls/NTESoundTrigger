@@ -1,3 +1,4 @@
+import multiprocessing
 from Config import Config, AudioEngine, FilterBank
 from Listener import Watcher
 from Monitor import start_monitor
@@ -5,6 +6,7 @@ from Trigger import KB
 from Logger import logger
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     cfg = Config()
     fb = FilterBank(cfg.HP_ORDER, cfg.HP_CUT, cfg.SR)
     n = int(cfg.MONITOR_SEC / cfg.FRAME)
