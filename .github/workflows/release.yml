@@ -44,8 +44,6 @@ jobs:
       run: |
         mkdir release
         Copy-Item ./dist/NTESoundTrigger.exe ./release/
-        Copy-Item ./闪避波形.wav ./release/
-        Copy-Item ./承轨反击波形.wav ./release/
         Copy-Item ./*.npy ./release/
         Compress-Archive -Path ./release/* -DestinationPath ./NTESoundTrigger.zip
 

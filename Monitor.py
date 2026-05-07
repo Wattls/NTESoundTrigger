@@ -18,7 +18,10 @@ except ImportError:
 
 
 def _plot(sq, mq, n, d_th, c_th):
+    plt.style.use('dark_background')
     fig, ax = plt.subplots(1, 1, figsize=(7, 3))
+    fig.set_facecolor('#1e1e1e')
+    ax.set_facecolor('#1e1e1e')
     x = np.arange(n, dtype=np.int64)
     d_vals = np.zeros(n, dtype=np.float64)
     c_vals = np.zeros(n, dtype=np.float64)
@@ -88,6 +91,7 @@ def _plot(sq, mq, n, d_th, c_th):
     root = tk.Tk()
     root.title("NTE - 开源免费项目")
     root.attributes('-topmost', True)
+    root.configure(bg='#1e1e1e')
 
     def on_close():
         nonlocal running, after_id
@@ -111,7 +115,8 @@ def _plot(sq, mq, n, d_th, c_th):
     canvas.draw()
     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-    tb = tk.Text(root, height=5)
+    tb = tk.Text(root, height=5, bg='#2d2d2d', fg='#cccccc', insertbackground='#cccccc',
+                 borderwidth=0, font=("Consolas", 9))
     tb.pack(fill=tk.BOTH, expand=True)
 
     threading.Thread(target=poll_text, daemon=True).start()
