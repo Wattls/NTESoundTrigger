@@ -26,16 +26,6 @@ jobs:
         pip install pyinstaller
         pip install -r requirements.txt
 
-    - name: 生成 .npy 缓存
-      run: |
-        python -c "
-        from Config import FilterBank, load_sample, Config
-        cfg = Config()
-        fb = FilterBank(cfg.HP_ORDER, cfg.HP_CUT, cfg.SR)
-        load_sample(cfg.DODGE_WAV, fb, cfg.SR)
-        load_sample(cfg.COUNTER_WAV, fb, cfg.SR)
-        "
-
     - name: 执行打包
       run: |
         pyinstaller -F -n "NTESoundTrigger" Main.py

@@ -1,17 +1,16 @@
+import time
 import numpy as np
-from concurrent.futures import ThreadPoolExecutor
 from Config import load_sample
 from Logger import logger
 
 
 class Watcher:
     def __init__(self, name, wav, action, thresh, fb,
-                 sr=32000, ratio=1.0, mon=None, tag='',
-                 allow_repeat=False, win_sec=None):
+                 sr=32000, mon=None, tag='',
+                 allow_repeat=False, cooldown=0.5):
         self.name = name
         self.action = action
         self.thresh = thresh
-        self.ratio = ratio
         self.sr = sr
         self.mon = mon
         self.tag = tag
@@ -21,8 +20,8 @@ class Watcher:
         self.ref = self._norm(self.sample)
 
         sample_sec = len(self.sample) / sr
-        self.win_sec = win_sec or max(sample_sec, 0.5)
-        max_n = int(self.win_sec * sr)
+        win_sec = max(sample_sec, 0.5)
+        max_n = int(win_sec * sr)
 
         fft_n = 1 << ((max_n + len(self.ref) - 1).bit_length())
         self._ref_fft = np.fft.rfft(self.ref, n=fft_n).conj()
@@ -32,7 +31,8 @@ class Watcher:
         self._pos = 0
         self._filled = 0
         self.ready = True
-        self._pool = ThreadPoolExecutor(max_workers=1)
+        self._last_fire = 0.0
+        self._cooldown = cooldown
 
     def _norm(self, wf):
         rms = np.sqrt(np.mean(wf ** 2) + 1e-6)
@@ -65,21 +65,30 @@ class Watcher:
         else:
             seg = np.concatenate((buf[self._pos:], buf[:self._pos]))
 
-        score = self._match(self._norm(seg)) * self.ratio
+        score = self._match(self._norm(seg))
 
         if self.mon:
             self.mon.put_score(score, self.tag)
 
+        now = time.time()
+        if now - self._last_fire < self._cooldown:
+            return
+
         if score >= self.thresh and (self.ready or self.allow_repeat):
-            self._pool.submit(self._fire, score)
+            self._fire(score)
+            self._last_fire = now
             self.ready = False
         else:
             self.ready = True
 
     def _fire(self, score):
         try:
+            t0 = time.perf_counter()
             acts = self.action()
-            txt = f"{self.name} {score:.5f}\n{' -> '.join(acts)}"
+            t1 = time.perf_counter()
+            ms = (t1 - t0) * 1000
+            ts = time.strftime('%H:%M:%S', time.localtime()) + f'.{int((time.time() * 1000) % 1000):03d}'
+            txt = f"[{ts}] {self.name} {score:.5f} (按键延迟{ms:.1f}ms)\n{' -> '.join(acts)}"
             if self.mon:
                 self.mon.put_msg(txt)
             logger.info(txt)

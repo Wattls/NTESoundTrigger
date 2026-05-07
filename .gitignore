@@ -1,5 +1,5 @@
 __pycache__/
 logs/
 captures/
-*.npy
+*_1000.npy
 .trae/
