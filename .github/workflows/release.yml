@@ -1,0 +1,52 @@
+name: 打包并发布
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: 拉取代码
+      uses: actions/checkout@v4
+
+    - name: 设置 Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: 安装依赖
+      run: |
+        pip install pyinstaller
+        pip install -r requirements.txt
+
+    - name: 生成 .npy 缓存
+      run: |
+        python -c "
+        from Config import FilterBank, load_sample, Config
+        cfg = Config()
+        fb = FilterBank(cfg.HP_ORDER, cfg.HP_CUT, cfg.SR)
+        load_sample(cfg.DODGE_WAV, fb, cfg.SR)
+        load_sample(cfg.COUNTER_WAV, fb, cfg.SR)
+        "
+
+    - name: 执行打包
+      run: |
+        pyinstaller -F -n "NTESoundTrigger" Main.py
+
+    - name: 打包发布文件
+      run: |
+        mkdir release
+        Copy-Item ./dist/NTESoundTrigger.exe ./release/
+        Copy-Item ./闪避波形.wav ./release/
+        Copy-Item ./承轨反击波形.wav ./release/
+        Copy-Item ./*.npy ./release/
+        Compress-Archive -Path ./release/* -DestinationPath ./NTESoundTrigger.zip
+
+    - name: 上传 Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ./NTESoundTrigger.zip
