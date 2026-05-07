@@ -8,7 +8,6 @@
 - **自动闪避**：检测到闪避音效时，自动执行 `右键 → Shift` 闪避操作
 - **自动反击**：检测到反击音效时，自动执行数字键 `1-4` + 鼠标左键反击操作
 - **实时监控窗口**：独立进程运行，显示闪避 / 反击匹配得分的实时波形图和触发日志
-- **截图保存**：触发时自动截屏保存（默认关闭）
 - **设备重连**：音频设备断开后自动重连，不影响程序运行
 
 ## 安装
@@ -22,12 +21,12 @@ pip install -r requirements.txt
 ## 依赖
 
 ```
-soundcard    # 系统音频回路采集
-numpy        # 数值计算
-scipy        # 滤波器 + FFT
-librosa      # 音频加载与重采样
-matplotlib   # 监控窗口绘图
-mss          # 截图（可选）
+soundcard       # 系统音频回路采集
+numpy           # 数值计算
+scipy           # 滤波器 + FFT
+librosa         # 音频加载与重采样
+matplotlib      # 监控窗口绘图
+PyDirectInput   # 键鼠模拟
 ```
 
 ## 配置
@@ -51,7 +50,6 @@ mss          # 截图（可选）
 | `DODGE_WIN` | None | 闪避匹配窗口时长（秒），None 为自动 |
 | `COUNTER_WIN` | None | 反击匹配窗口时长（秒），None 为自动 |
 | `MONITOR_SEC` | 5 | 监控窗口显示的历史时长（秒） |
-| `SCREENSHOT` | False | 触发时是否截图 |
 
 ## 使用
 
@@ -77,7 +75,7 @@ python Main.py
                                               ↓
                                得分 ≥ 阈值 → 触发键鼠操作
                                               ↓
-                                    监控窗口 / 截图 / 日志
+                                    监控窗口 / 日志
 ```
 
 - **高通滤波**：过滤低频背景噪音，提取攻击音效的高频特征
@@ -94,15 +92,17 @@ NTESoundTrigger/
 ├── Config.py     # 配置类 / 滤波器 / 音频引擎 / 样本加载
 ├── Listener.py   # 匹配器，环形缓冲区 + FFT 匹配 + 触发逻辑
 ├── Monitor.py    # 监控窗口，matplotlib 波形图 + 日志面板
-├── Trigger.py    # 键盘鼠标模拟（Windows SendInput）
+├── Trigger.py    # 键盘鼠标模拟（PyDirectInput）
 ├── Logger.py     # 日志配置
 └── requirements.txt
 ```
+
 ## 注意
 
-- 仅支持 Windows（键盘鼠标模拟使用 `user32.SendInput`）
+- 仅支持 Windows（键鼠模拟使用 PyDirectInput）
 - 需要启用系统立体声混音或使用 SoundCard 支持的回路设备
 - 管理员权限非必需，但部分游戏可能需要以管理员身份运行才能正常发送键鼠输入
+
 ## 许可证
 
 本项目基于 [GPLv3](LICENSE) 许可证开源。

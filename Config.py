@@ -52,20 +52,17 @@ class FilterBank:
 
 
 def load_sample(path, fb, sr):
-    import glob
     base = os.path.splitext(path)[0]
-    # 找任意 {base}*.npy 缓存
-    matches = sorted(glob.glob(base + "*.npy"))
-    for c in matches:
-        data = np.load(c)
+    npy = base + f"_{sr}.npy"
+    if os.path.exists(npy):
+        data = np.load(npy)
         if data.ndim > 0 and data.size > 0:
-            logger.info("load %s", c)
+            logger.info("load %s", npy)
             return data
 
     wf, orig_sr = librosa.load(path)
     wf = librosa.resample(wf, orig_sr=orig_sr, target_sr=sr)
     processed = fb.preprocess(wf)
-    npy = base + f"_{sr}.npy"
     np.save(npy, processed)
     logger.info("cached %s", npy)
     return processed
