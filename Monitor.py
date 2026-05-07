@@ -62,8 +62,7 @@ def _plot(sq, mq, n, d_th, c_th):
     ani = FuncAnimation(fig, tick, init_func=init, blit=True,
                         cache_frame_data=False, interval=200)
 
-    notice = "★ 本项目开源免费，请勿付费购买 ★\nGitHub: https://github.com/Wattls/NTESoundTrigger\n\n"
-    history = [notice]
+    history = []
 
     def poll_text():
         nonlocal running, after_id
@@ -98,6 +97,10 @@ def _plot(sq, mq, n, d_th, c_th):
         root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_close)
+
+    notice_label = tk.Label(root, text="★ 本项目开源免费，请勿付费购买 | GitHub: github.com/Wattls/NTESoundTrigger",
+                            fg="red", font=("Microsoft YaHei", 10, "bold"), bg="black")
+    notice_label.pack(fill=tk.X)
 
     canvas = FigureCanvasTkAgg(fig, master=root)
     canvas.draw()
