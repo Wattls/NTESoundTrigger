@@ -62,7 +62,8 @@ def _plot(sq, mq, n, d_th, c_th):
     ani = FuncAnimation(fig, tick, init_func=init, blit=True,
                         cache_frame_data=False, interval=200)
 
-    history = []
+    notice = "★ 本项目开源免费，请勿付费购买 ★\nGitHub: https://github.com/Wattls/NTESoundTrigger\n\n"
+    history = [notice]
 
     def poll_text():
         nonlocal running, after_id
@@ -85,7 +86,7 @@ def _plot(sq, mq, n, d_th, c_th):
             after_id = root.after(100, poll_text)
 
     root = tk.Tk()
-    root.title("NTE")
+    root.title("NTE - 开源免费项目")
     root.attributes('-topmost', True)
 
     def on_close():
