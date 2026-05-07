@@ -1,3 +1,6 @@
+import multiprocessing
+multiprocessing.freeze_support()
+
 from Config import Config, AudioEngine, FilterBank
 from Listener import Watcher
 from Monitor import start_monitor
