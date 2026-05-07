@@ -1,5 +1,6 @@
 import multiprocessing
 import threading
+import webbrowser
 import numpy as np
 from types import SimpleNamespace
 from Logger import logger
@@ -98,9 +99,13 @@ def _plot(sq, mq, n, d_th, c_th):
 
     root.protocol("WM_DELETE_WINDOW", on_close)
 
-    notice_label = tk.Label(root, text="★ 本项目开源免费，请勿付费购买 | GitHub: github.com/Wattls/NTESoundTrigger",
-                            fg="red", font=("Microsoft YaHei", 10, "bold"), bg="black")
+    def open_repo(e=None):
+        webbrowser.open("https://github.com/Wattls/NTESoundTrigger")
+
+    notice_label = tk.Label(root, text="★ 本项目开源免费，请勿付费购买 | 点击访问项目 →",
+                            fg="blue", font=("Microsoft YaHei", 10, "bold"), bg="black", cursor="hand2")
     notice_label.pack(fill=tk.X)
+    notice_label.bind("<Button-1>", open_repo)
 
     canvas = FigureCanvasTkAgg(fig, master=root)
     canvas.draw()
